@@ -1,0 +1,107 @@
+            -----------Stream------------
+
+--The Stream is track the changes in table (insert,Update, delete) and provide a change Data capture mechanism for efficient    data processing.        
+---Streams can be combined with tasks to set continous data piplines.
+
+
+Create database t100;
+create schema t101;
+
+create table t99 (tid number(2),t_name varchar2(10),tsal number);
+
+insert into t99 values (11,'A',2000);
+insert into t99 values (22,'B',5000);
+insert into t99 values (33,'C',2500);
+insert into t99 values (44,'D',1000);
+
+select * from t99;
+
+create stream my_t99 on table t99;
+
+select * from my_t99;
+
+insert into t99 values (55,'E',9000);
+insert into t99 values (66,'F',6700);
+insert into t99 values (77,'G',9080);
+
+
+select * from my_t99;
+
+update t99
+set tsal=2500
+where tsal =9000;
+
+delete from t99 where t_name='F';
+
+insert into t99 values (88,'S',9090);
+insert into t99 values (99,'R',8908);
+
+
+select * from my_t99;
+
+update t99 set t_name='N' where t_name ='R';
+
+
+update t99 set tsal='2100' where tid IN(22,88);
+
+select * from my_t99;
+
+delete from t99 where tid in (22,44);
+
+select * from my_t99;
+
+--Insert 
+SELECT * FROM my_t99
+WHERE metadata$action = 'INSERT'
+AND metadata$isupdate = 'FALSE';
+
+--UPDATE
+SELECT * FROM my_t99
+WHERE metadata$action = 'INSERT'
+AND metadata$isupdate = 'TRUE';
+
+--DELETE
+SELECT * FROM my_t99
+WHERE metadata$action = 'DELETE'
+AND metadata$isupdate = 'FALSE';
+
+
+merge into t99 t using my_t99 m on t.tid=m.tid
+when matched and metadata$action ='delete'and metadata$isupdate ='false'
+then delete 
+when matched and metadata$action ='insert'and metadata$isupdate='True'
+then update set t.t_name= m.t_name , t.tsal=m.tsal 
+when not matched and metadata$action = 'insert'and metadata$isupdate='false'
+then insert (tid, t_name,tsal)values(m.tid, m.t_name, m.tsal);
+
+SHOW STREAMS;
+
+
+-----------------Types of Table  ----------------
+/*  
+
+1) Permanant table : it is a default table in snowflake 
+                     these are regular and common table 
+                     table will exist until we drop it explicitly 
+            syntax : Create or replace table table_name ()
+
+2) Temporary table : Table will exist only within a session 
+                     once session gets end, table gets drop completely and is not a recoverable
+                     1 day retantion period 
+             syntax : create or replace temporary table table_name ()
+
+3) transient table : It is similar to permanant table but with 1 day retantion period 
+                     table will exist until we drop them explicitly 
+             syntax: Create or replace Transient table table_name ()
+
+
+----------------------types of Load-------------
+
+Main load : Loads the entire dataset from the source into the target table.
+
+Incremental load : Loads only the new or changed records from source into the target.
+
+
+*note*
+Main Load = Full data load (all records)
+Incremental Load = Only new/updated records (delta changes)
